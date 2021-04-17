@@ -39,7 +39,7 @@
 
         <v-select
           v-model="request.filters"
-          :items="context.filters"
+          :items="filters"
           item-text="text"
           item-value="value"
           :label="$t('scan.filters')"
@@ -49,7 +49,7 @@
         <v-select
           :label="$t('scan.format')"
           v-model="request.pipeline"
-          :items="context.pipelines"
+          :items="pipelines"
           item-text="text"
           item-value="value"></v-select>
 
@@ -64,14 +64,28 @@
       <v-col cols="12" md="auto" class="mb-10 mb-md-0" :style="{width: `${preview.width}px`}">
         <cropper ref="cropper" class="cropper" :key="preview.key" :transitionTime="10" :wheelResize="false"
             :default-position="cropperDefaultPosition" :default-size="cropperDefaultSize"
-            :src="img" @change="onCrop"></cropper>
+            :src="img" @change="onCropperChange"></cropper>
       </v-col>
 
       <v-col cols="12" md="3" class="mb-10 mb-md-0">
-        <v-text-field :label="$t('scan.top')" type="number" v-model="request.params.top"  @change="onCoordinatesChange" />
-        <v-text-field :label="$t('scan.left')" type="number" v-model="request.params.left"  @change="onCoordinatesChange" />
-        <v-text-field :label="$t('scan.width')" type="number" v-model="request.params.width"  @change="onCoordinatesChange" />
-        <v-text-field :label="$t('scan.height')" type="number" v-model="request.params.height"  @change="onCoordinatesChange" />
+        <v-text-field :label="$t('scan.top')" type="number" v-model="request.params.top" @blur="onCoordinatesChange" />
+        <v-text-field :label="$t('scan.left')" type="number" v-model="request.params.left" @blur="onCoordinatesChange" />
+        <v-text-field :label="$t('scan.width')" type="number" v-model="request.params.width" @blur="onCoordinatesChange" />
+        <v-text-field :label="$t('scan.height')" type="number" v-model="request.params.height" @blur="onCoordinatesChange" />
+
+        <v-menu offset-y>
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn color="primary" v-bind="attrs" v-on="on">{{ $t('scan.paperSize') }}</v-btn>
+          </template>
+          <v-list>
+            <v-list-item
+              v-for="(item, index) in paperSizes"
+              @click="updatePaperSize(item)"
+              :key="index">
+              <v-list-item-title>{{ item.name }}</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
 
         <div v-if="'--brightness' in device.features">
           <v-slider class="align-center" v-model="request.params.brightness"
@@ -116,12 +130,9 @@ import Storage from '../classes/storage';
 
 const storage = Storage.instance();
 
-/**
- * @param {number} n 
- * @returns {number}
- */
-function round(n) {
-  return Math.round(n);
+function round(n, dp) {
+  const f = Math.pow(10, dp || 0);
+  return Math.round(n * f) / f;
 }
 
 export default {
@@ -142,6 +153,7 @@ export default {
         ],
         filters: [],
         pipelines: [],
+        paperSizes: [],
         version: '0'
       },
       device: device,
@@ -166,11 +178,54 @@ export default {
     });
   },
 
+  computed: {
+    deviceSize() {
+      return {
+        width: this.device.features['-x'].limits[1],
+        height: this.device.features['-y'].limits[1]
+      };
+    },
+
+    filters() {
+      return this.context.filters.map(f => {
+        return {
+          text: this.$t(f),
+          value: f
+        };
+      });
+    },
+
+    paperSizes() {
+      const deviceSize = {
+        x: this.device.features['-x'].limits[1],
+        y: this.device.features['-y'].limits[1]
+      };
+
+      const paperSizes = this.context.paperSizes
+        .filter(paper => paper.dimensions.x <= deviceSize.x && paper.dimensions.y <= deviceSize.y);
+      return paperSizes;
+    },
+
+    pipelines() {
+      return this.context.pipelines.map(p => {
+        const variables = (p.match(/@:[a-z-.]+/ig) || []).map(s => s.substr(2));
+        let text = p;
+        variables.forEach(v => {
+          text = text.replaceAll(`@:${v}`, this.$t(v));
+        });
+
+        return {
+          text: text,
+          value: p
+        };
+      });
+    }
+  },
+
   watch: {
     request: {
       handler(request) {
         storage.request = request;
-        this.onCoordinatesChange();
       },
       deep: true
     }
@@ -248,19 +303,49 @@ export default {
       });
     },
 
-    cropperDefaultPosition() {
-      const adjust = (n) => round(n * this.pixelsPerMm());
+    pixelsPerMm() {
+      const scanner = this.deviceSize;
+
+      // The preview image may not have perfectly scaled dimensions
+      // because pixel counts are integers. So we report a horizontal
+      // and vertical resolution
+      const image = this.$refs.cropper.imageSize;
       return {
-        left: adjust(this.request.params.left),
-        top: adjust(this.request.params.top)
+        x: image.width / scanner.width,
+        y: image.height / scanner.height
+      };
+    },
+
+    scaleCoordinates(coordinates, xScale, yScale) {
+      return {
+        width: round(coordinates.width * xScale, 1),
+        height: round(coordinates.height * yScale, 1),
+        left: round(coordinates.left * xScale, 1),
+        top: round(coordinates.top * yScale, 1)
+      };
+    },
+
+    cropperDefaultPosition() {
+      const adjusted = this.scaleCoordinates(
+        this.request.params,
+        this.pixelsPerMm().x,
+        this.pixelsPerMm().y);
+
+      return {
+        left: adjusted.left,
+        top: adjusted.top
       };
     },
 
     cropperDefaultSize() {
-      const adjust = (n) => round(n * this.pixelsPerMm());
+      const adjusted = this.scaleCoordinates(
+        this.request.params,
+        this.pixelsPerMm().x,
+        this.pixelsPerMm().y);
+
       return {
-        width: adjust(this.request.params.width),
-        height: adjust(this.request.params.height)
+        width: adjusted.width,
+        height: adjusted.height
       };
     },
 
@@ -273,34 +358,37 @@ export default {
     },
 
     onCoordinatesChange() {
-      const adjust = (n) => round(n * this.pixelsPerMm());
-      const params = this.request.params;
-      const adjusted = {
-        width: adjust(params.width),
-        height: adjust(params.height),
-        left: adjust(params.left),
-        top: adjust(params.top)
-      };
+      const adjusted = this.scaleCoordinates(
+        this.request.params,
+        this.pixelsPerMm().x,
+        this.pixelsPerMm().y);
+
       this.$refs.cropper.setCoordinates(adjusted);
     },
 
-    onCrop({coordinates}) {
-      const adjust = (n) => round(n / this.pixelsPerMm());
+    onCropperChange({coordinates}) {
+      const adjusted = this.scaleCoordinates(
+        coordinates,
+        1 / this.pixelsPerMm().x,
+        1 / this.pixelsPerMm().y);
+
+      // The cropper changes even when coordinates are set manually. This will
+      // result in manually set values being overwritten because of rounding.
+      // If someone is taking the trouble to set values manually then they
+      // should be preserved. We should only update the values if they breaach
+      // a threshold or the scanner dimensions
+      const scanner = this.deviceSize;
       const params = this.request.params;
-      params.width = adjust(coordinates.width);
-      params.height = adjust(coordinates.height);
-      params.left = adjust(coordinates.left);
-      params.top = adjust(coordinates.top);
-    },
+      const threshold = 0.4;
+      const boundAndRound = (n, min, max) => round(Math.min(Math.max(min, n), max), 1);
+      const bestValue = (current, crop, min, max) => Math.abs(current - crop) < threshold
+        ? boundAndRound(current, min, max)
+        : boundAndRound(crop, min, max);
 
-    pixelsPerMm() {
-      const scanner = {
-        width: this.device.features['-x'].limits[1],
-        height: this.device.features['-y'].limits[1]
-      };
-
-      const image = this.$refs.cropper.imageSize;
-      return image.height / scanner.height;
+      params.width = bestValue(params.width, adjusted.width, 0, scanner.width);
+      params.height = bestValue(params.height, adjusted.height, 0, scanner.height);
+      params.left = bestValue(params.left, adjusted.left, 0, scanner.width);
+      params.top = bestValue(params.top, adjusted.top, 0, scanner.height);
     },
 
     readContext(force) {
@@ -313,26 +401,6 @@ export default {
 
       return this._fetch(url).then(context => {
         window.clearTimeout(timer);
-        context.filters = context.filters.map(f => {
-          return {
-            text: this.$t(`scan.${f}`),
-            value: f
-          };
-        });
-
-        context.pipelines = context.pipelines.map(p => {
-          const variables = (p.match(/@:[a-z-.]+/ig) || []).map(s => s.substr(2));
-          let text = p;
-          variables.forEach(v => {
-            text = text.replaceAll(`@:${v}`, this.$t(v));
-          });
-
-          return {
-            text: text,
-            value: p
-          };
-        });
-
         this.context = context;
 
         if (context.devices.length > 0) {
@@ -431,6 +499,14 @@ export default {
           this.$router.push('/files');
         }
       });
+    },
+
+    updatePaperSize(value) {
+      if (value.dimensions) {
+        this.request.params.width = value.dimensions.x;
+        this.request.params.height = value.dimensions.y;
+        this.onCoordinatesChange();
+      }
     }
   }
 };

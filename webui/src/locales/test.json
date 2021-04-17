@@ -30,6 +30,12 @@
     "version": "##VERSION"  
   },
 
+  "filter": {
+    "auto-level": "##SCAN.FILTERS:AUTO-LEVEL",
+    "threshold": "##SCAN.FILTERS:THRESHOLD",
+    "blur": "##SCAN.FILTERS:BLUR"
+  },
+
   "pipeline": {
     "high-quality": "##HIGH-QUALITY",
     "medium-quality": "##MEDIUM-QUALITY",
@@ -55,9 +61,6 @@
     "batch:auto-collate-standard": "##COLLATE-STANDARD",
     "batch:auto-collate-reverse": "##COLLATE-REVERSE",
     "filters": "##SCAN.FILTERS",
-    "filters:auto-level": "##SCAN.FILTERS:AUTO-LEVEL",
-    "filters:threshold": "##SCAN.FILTERS:THRESHOLD",
-    "filters:blur": "##SCAN.FILTERS:BLUR",
     "format": "##SCAN.FORMAT",
     "btn-preview": "##PREVIEW",
     "btn-clear": "##CLEAR",
@@ -67,6 +70,7 @@
     "left": "##SCAN.LEFT",
     "width": "##SCAN.WIDTH",
     "height": "##SCAN.HEIGHT",
+    "paperSize": "##SCAN.PAPERSIZE",
     "brightness": "##SCAN.BRIGHTNESS",
     "contrast": "##SCAN.CONSTRAST",
     "message:loading-devices": "##SCAN.LOADING",
