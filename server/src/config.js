@@ -1,5 +1,6 @@
 const dayjs = require('dayjs');
 const userOptions = require('./user-options');
+const Constants = require('./constants');
 const Package = require('../package.json');
 let instance = null;
 
@@ -54,6 +55,13 @@ class Config {
         ]
       },
 
+      batchModes: [
+        Constants.BATCH_NONE,
+        Constants.BATCH_MANUAL,
+        Constants.BATCH_AUTO,
+        Constants.BATCH_COLLATE_STANDARD
+      ],
+
       filters: [
         {
           description: 'filter.auto-level',
@@ -71,8 +79,8 @@ class Config {
     
       paperSizes: [
         { name: 'A3', dimensions: { x: 297, y: 420 } },
-        { name: 'A4', dimensions: { x: 215, y: 297 } },
-        { name: 'A5', dimensions: { x: 148, y: 215 } },
+        { name: 'A4', dimensions: { x: 210, y: 297 } },
+        { name: 'A5', dimensions: { x: 148, y: 210 } },
         { name: 'A6', dimensions: { x: 105, y: 148 } },
         { name: 'B3', dimensions: { x: 353, y: 500 } },
         { name: 'B4', dimensions: { x: 250, y: 353 } },

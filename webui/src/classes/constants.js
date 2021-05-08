@@ -2,13 +2,15 @@ const Constants = {
   Version: process.env.VUE_APP_VERSION,
   
   Locales: [
-    'cn',
-    'cz',
+    'cs',
     'de',
     'en',
     'es',
     'fr',
     'it',
+    'pt-BR',
+    'ru',
+    'zh',
     'test'
   ],
 
@@ -22,6 +24,29 @@ const Constants = {
     Light: 'light',
     System: 'system'
   },
+
+  Colors: [
+    'accent-4',
+    'red',
+    'pink',
+    'purple',
+    'deep-purple',
+    'indigo',
+    'blue',
+    'light-blue',
+    'cyan',
+    'teal',
+    'green',
+    'light-green',
+    'lime',
+    'yellow',
+    'amber',
+    'orange',
+    'deep-orange',
+    'brown',
+    'blue-grey',
+    'grey'
+  ]
 };
 
 export default Constants;

@@ -7,16 +7,28 @@
 [![GitHub stars](https://img.shields.io/github/stars/sbs20/scanservjs?label=Github%20stars&style=for-the-badge)](https://github.com/sbs20/scanservjs)
 [![GitHub](https://img.shields.io/github/license/sbs20/scanservjs?style=for-the-badge)](https://github.com/sbs20/scanservjs/blob/master/LICENSE.md)
 
+![screenshot](https://github.com/sbs20/scanservjs/raw/master/docs/screen0.jpg)
+
+Copyright 2016-2021 [Sam Strachan](https://github.com/sbs20)
+
+## What people are saying
+
 > I've decided to switch to using only this, I find using this in a browser is
 > just perfect and way better than bloated software from printer manufacturers
 
--- *A satisfied user*
+
+> It enabled me to still use my old hp3900 scanner without worrying about
+> drivers and vendor specific UIs. Furthermore, scans just being accessible via
+> an awesome web interface makes it even more brilliant!
+
+
+## About
 
 scanservjs is a web UI frontend for your scanner. It allows you to share one or
 more scanners (using SANE) on a network without the need for drivers or
 complicated installation.
 
-### Features
+## Features
 
 * Cropping
 * Source selection (Flatbed / ADF)
@@ -26,18 +38,14 @@ complicated installation.
 * Filters: Autolevels, Threshold, Blur
 * Configurable overrides for all defaults as well as filters and formats
 * Multipage scanning (with collation for double sided scans)
+* International translations: Czech, French, German, Italian, Mandarin,
+  Portuguese (BR), Russian, Spanish;
+  [Help requested](https://github.com/sbs20/scanservjs/issues/154)
 * Light and dark mode
-* **NEW**: International translations: Czech, French, German, Italian, Mandarin,
-  Spanish (**help requested**)
+* Responsive design
 
 It supports any
 [SANE compatible devices](http://www.sane-project.org/sane-supported-devices.html).
-
-![screenshot](https://github.com/sbs20/scanservjs/raw/master/docs/screen0.png)
-
-![screenshot](https://github.com/sbs20/scanservjs/raw/master/docs/screen1.png)
-
-Copyright 2016-2021 [Sam Strachan](https://github.com/sbs20)
 
 ## Requirements
 
@@ -49,58 +57,14 @@ Copyright 2016-2021 [Sam Strachan](https://github.com/sbs20)
 
 * [Manual installation](docs/install.md)
 * [Docker installation](docs/docker.md)
+* [Scanner and SANE setup](docs/sane.md)
 * [Development notes](docs/development.md)
-* [Configuring the scanner and SANE](docs/sane.md)
 
 ## Configuration and device override
 
-If you want to override some specific configuration setting then you can do so
-within `./config/config.local.js`. Take a copy of `./config/config.default.js`
-and override the sections you want. Using docker you will need to map the volume
-using `-v /my/local/path:/app/config` then create a file in your directory
-called `config.local.js`. See [example source](./server/config/config.local.js)
-for more options.
-
-```javascript
-module.exports = {
-  /**
-   * @param {Configuration} config 
-   */
-  afterConfig(config) {
-    // Set default preview resolution
-    config.previewResolution = 300;
-
-    // Add a custom print pipeline
-    config.pipelines.push({
-      extension: 'pdf',
-      description: 'Print PDF',
-      commands: [
-        'convert @- -quality 92 tmp-%04d.jpg && ls tmp-*.jpg',
-        'convert @- scan-0000.pdf',
-        'lp -d MY_PRINTER scan-0000.pdf',
-        'ls scan-*.*'
-      ]
-    });
-  },
-
-  /**
-   * @param {ScanDevice[]} devices 
-   */
-  afterDevices(devices) {
-    // Override the defaults for plustek scanners
-    const device = devices.filter(d => d.id.startsWith('plustek'))[0];
-    if (device) {
-      device.features['--mode'].default = 'Color';
-      device.features['--resolution'].default = 150;
-      device.features['--resolution'].options = [75, 150, 300, 600];
-      device.features['--brightness'].default = 0;
-      device.features['--contrast'].default = 5;
-      device.features['-x'].default = 215;
-      device.features['-y'].default = 297;
-    }
-  }
-};
-```
+If you want to override some specific configuration settings then you can do so
+within `./config/config.local.js`. See [Configuration](docs/config.md) for more
+detail.
 
 ## Why?
 

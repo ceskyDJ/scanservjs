@@ -10,7 +10,7 @@
 
         <v-select v-if="'--source' in device.features"
           :label="$t('scan.source')" v-model="request.params.source"
-          :items="device.features['--source']['options']"></v-select>
+          :items="sources" item-value="value" item-text="text"></v-select>
 
         <v-select
           :label="$t('scan.resolution')" v-model="request.params.resolution"
@@ -18,24 +18,17 @@
 
         <v-select
           :label="$t('scan.mode')" v-model="request.params.mode"
-          :items="device.features['--mode']['options']"></v-select>
+          :items="modes" item-value="value" item-text="text"></v-select>
 
         <v-select v-if="'--disable-dynamic-lineart' in device.features"
           :label="$t('scan.dynamic-lineart')" v-model="request.params.mode"
           :items="[
-            { key: false, value: $t('scan.dynamic-lineart:disabled') },
-            { key: true, value: $t('scan.dynamic-lineart:enabled') }]"
-          item-value="key" item-text="value"></v-select>
+            { value: false, text: $t('scan.dynamic-lineart:disabled') },
+            { value: true, text: $t('scan.dynamic-lineart:enabled') }]"
+          item-value="value" item-text="text"></v-select>
 
         <v-select :label="$t('scan.batch')" v-model="request.batch"
-          :items="[
-            { key: 'none', value: $t('scan.batch:none') },
-            { key: 'manual', value: $t('scan.batch:manual') },
-            { key: 'auto', value: $t('scan.batch:auto') },
-            { key: 'auto-collate-standard', value: $t('scan.batch:auto-collate-standard') },
-            { key: 'auto-collate-reverse', value: $t('scan.batch:auto-collate-reverse') }
-          ]"
-          item-value="key" item-text="value"></v-select>
+          :items="batchModes" item-value="value" item-text="text"></v-select>
 
         <v-select
           v-model="request.filters"
@@ -135,6 +128,10 @@ function round(n, dp) {
   return Math.round(n * f) / f;
 }
 
+function sanitiseLocaleKey(s) {
+  return s.toLowerCase().replace(/\[/g, '(').replace(/\]/g, ')');
+}
+
 export default {
   name: 'Scan',
   components: {
@@ -151,6 +148,7 @@ export default {
         devices: [
           device
         ],
+        batchModes: [],
         filters: [],
         pipelines: [],
         paperSizes: [],
@@ -186,11 +184,33 @@ export default {
       };
     },
 
+    batchModes() {
+      return this.context.batchModes.map(mode => {
+        const key = `batch-mode.${sanitiseLocaleKey(mode)}`;
+        let translation = this.$t(key);
+        return {
+          text: translation === key ? mode : translation,
+          value: mode
+        };
+      });
+    },
+
     filters() {
       return this.context.filters.map(f => {
         return {
           text: this.$t(f),
           value: f
+        };
+      });
+    },
+
+    modes() {
+      return this.device.features['--mode'].options.map(mode => {
+        const key = `mode.${sanitiseLocaleKey(mode)}`;
+        let translation = this.$t(key);
+        return {
+          text: translation === key ? mode : translation,
+          value: mode
         };
       });
     },
@@ -219,6 +239,17 @@ export default {
           value: p
         };
       });
+    },
+
+    sources() {
+      return this.device.features['--source'].options.map(source => {
+        const key = `source.${sanitiseLocaleKey(source)}`;
+        let translation = this.$t(key);
+        return {
+          text: translation === key ? source : translation,
+          value: source
+        };
+      });
     }
   },
 
@@ -233,8 +264,7 @@ export default {
 
   methods: {
     _resizePreview() {
-      const paperRatio = this.device.features['-x'].limits[1] / 
-        this.device.features['-y'].limits[1];
+      const paperRatio = this.deviceSize.width / this.deviceSize.height;
 
       // This only makes a difference when the col-width="auto" - so md+
       const mdBreakpoint = 960;
@@ -375,7 +405,7 @@ export default {
       // The cropper changes even when coordinates are set manually. This will
       // result in manually set values being overwritten because of rounding.
       // If someone is taking the trouble to set values manually then they
-      // should be preserved. We should only update the values if they breaach
+      // should be preserved. We should only update the values if they breach
       // a threshold or the scanner dimensions
       const scanner = this.deviceSize;
       const params = this.request.params;
@@ -401,9 +431,9 @@ export default {
 
       return this._fetch(url).then(context => {
         window.clearTimeout(timer);
-        this.context = context;
 
-        if (context.devices.length > 0) {
+        if (context.devices && context.devices.length > 0) {
+          this.context = context;
           this.device = context.devices[0];
           this.request = this.buildRequest();
           for (let test of context.diagnostics) {
@@ -433,6 +463,7 @@ export default {
         }
       }).then(data => {
         this.img = 'data:image/jpeg;base64,' + data.content;
+        this._resizePreview();
       });
     },
 
