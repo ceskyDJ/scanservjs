@@ -9,8 +9,13 @@
   script. But please note that this will install dependecies and needs to run as
   root:
   ```sh
-  curl -s https://raw.githubusercontent.com/sbs20/scanservjs/master/server/bin/installer.sh | sudo bash -s -- -a
+  curl -s https://raw.githubusercontent.com/sbs20/scanservjs/master/packages/server/installer.sh | sudo bash -s -- -a
   ```
+* If you're using Arch, then [@dadosch](https://github.com/dadosch) created a
+  PKGBUILD script in Arch's AUR which allows Arch-distro-based users to quickly
+  install and update scanservjs with any AUR helper, for example:
+  `yay -S scanservjs`. See
+  [package](https://aur.archlinux.org/packages/scanservjs/) for more.
 * If you're using another distro, then for the time being you either need to
   manually run the steps in the install script or use docker.
 
@@ -45,6 +50,12 @@ debug where the problem is:
   [here](./sane.md)) to allow certain groups access to the hardware - but it's
   also worth verifying that the `scanservjs` user is a member of the `scanner`
   group (or the group specified in your udev rule): `groups scanservjs`.
+* If everything so far has worked, then also try running a scan as the
+  scanservjs user with
+  `sudo su - scanservjs -c 'scanimage --format tiff > test.tif'` - this should
+  output a tif file in the scanservjs home directory (probably
+  `/home/scanservjs/`). If you can get this to work then scanservjs should be
+  working fine.
 * Getting logs: use `journalctl`. See the journalctl manpage for details but
   `sudo journalctl -e -u scanservjs` should be enough to get you started.
 
